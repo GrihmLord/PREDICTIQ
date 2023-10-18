@@ -1,0 +1,11 @@
+{
+  "compilerOptions": {
+    "target": "ES6",
+    "module": "CommonJS",
+    "strict": true,
+    "forceConsistentCasingInFileNames": true,
+    // other compiler options
+  },
+  "include": ["src/**/*.ts"], // Make sure this path matches your actual source file location
+  "exclude": ["node_modules"]
+}
