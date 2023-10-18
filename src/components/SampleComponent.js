@@ -11,3 +11,6 @@ function SampleComponent() {
 }
 
 export default SampleComponent;
+
+// Path: src/App.js
+// src/App.js
