@@ -1,9 +1,23 @@
-// src/App.js
+// Path: src/App.js
 import React from 'react';
-import AppNavigation from './navigation/Navigation';
+import { SafeAreaView, StyleSheet } from 'react-native';
+import SampleComponent from './components/SampleComponent';
 
-function App() {
-  return <AppNavigation />;
-}
+const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#fff',
+  },
+});
+
+const App = () => {
+  return (
+    <SafeAreaView style={styles.safeArea}>
+      <SampleComponent text="Hello from SampleComponent!" />
+    </SafeAreaView>
+  );
+};
 
 export default App;

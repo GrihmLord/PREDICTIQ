@@ -1,20 +1,32 @@
-// src/navigation/Navigation.js
-import { NavigationContainer } from '@react-navigation/native';
-import { createStackNavigator } from '@react-navigation/stack';
 import React from 'react';
-import HomeScreen from '../screens/HomeScreen';
+import { Text, TouchableOpacity } from 'react-native';
+import PropTypes from 'prop-types'; // Only one import for PropTypes
+import { NavigationContainer } from '@react-navigation/native';
+// Removed unused imports
 
-const Stack = createStackNavigator();
+// ... rest of your code
 
-function AppNavigation() {
-  return (
-    <NavigationContainer>
-      <Stack.Navigator initialRouteName="Home">
-        <Stack.Screen name="Home" component={HomeScreen} />
-        {/* Add more screens as needed */}
-      </Stack.Navigator>
-    </NavigationContainer>
-  );
+const SettingsButton = ({ navigation }) => (
+  <TouchableOpacity onPress={() => navigation.navigate('Settings')}>
+    <Text style={styles.headerButton}>Settings</Text>
+  </TouchableOpacity>
+);
+
+
+SettingsButton.propTypes = {
+  // ... propTypes definition
+};
+
+// ... rest of your code
+
+function HomeScreen({ navigation }) {
+  // ... rest of your component
 }
+
+HomeScreen.propTypes = {
+  // ... propTypes definition
+};
+
+// ... rest of your code
 
 export default AppNavigation;
