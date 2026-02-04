@@ -1,31 +1,32 @@
-// src/styles/colors.ts
-// Semantic color palette for PREDICTIQ predictive analytics
+import {Platform} from 'react-native';
+
+const isWeb = Platform.OS === 'web';
 
 export const colors = {
   // Primary brand colors
   primary: {
-    main: '#6366F1',      // Indigo
+    main: isWeb ? 'var(--brand-primary, #6366F1)' : '#6366F1', // Indigo
     light: '#818CF8',
     dark: '#4F46E5',
   },
 
   // Success probability gradient
   success: {
-    high: '#10B981',      // Green - high probability
+    high: '#10B981', // Green - high probability
     medium: '#34D399',
     low: '#6EE7B7',
   },
 
   // Warning gradient
   warning: {
-    high: '#F59E0B',      // Amber
+    high: '#F59E0B', // Amber
     medium: '#FBBF24',
     low: '#FCD34D',
   },
 
   // Danger/low probability gradient
   danger: {
-    high: '#EF4444',      // Red
+    high: '#EF4444', // Red
     medium: '#F87171',
     low: '#FCA5A5',
   },
@@ -52,22 +53,29 @@ export const colors = {
   },
 
   // Neutrals - Dark mode
+  // Neutrals - Dark mode
   dark: {
-    background: '#0F172A',
-    surface: '#1E293B',
+    background: isWeb ? 'var(--brand-background, #0F172A)' : '#0F172A',
+    surface: isWeb ? 'var(--brand-surface, #1E293B)' : '#1E293B',
     surfaceAlt: '#334155',
     border: '#475569',
-    textPrimary: '#F8FAFC',
-    textSecondary: '#94A3B8',
+    textPrimary: isWeb ? 'var(--brand-text-primary, #F8FAFC)' : '#F8FAFC',
+    textSecondary: isWeb ? 'var(--brand-text-secondary, #94A3B8)' : '#94A3B8',
     textMuted: '#64748B',
   },
 };
 
 // Helper function to get probability color based on percentage
 export const getProbabilityColor = (probability: number): string => {
-  if (probability >= 70) return colors.success.high;
-  if (probability >= 50) return colors.warning.high;
-  if (probability >= 30) return colors.warning.medium;
+  if (probability >= 70) {
+    return colors.success.high;
+  }
+  if (probability >= 50) {
+    return colors.warning.high;
+  }
+  if (probability >= 30) {
+    return colors.warning.medium;
+  }
   return colors.danger.high;
 };
 

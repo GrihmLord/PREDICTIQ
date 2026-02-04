@@ -3,5 +3,6 @@
 
 export * from './colors';
 export * from './theme';
-export { default as colors } from './colors';
-export { lightTheme, darkTheme, createTheme } from './theme';
+export { colors, getProbabilityColor, getTrendColor } from './colors';
+export { typography, spacing, borderRadius, shadows, lightTheme, darkTheme, createTheme } from './theme';
+export type { ThemeMode, Theme } from './theme';

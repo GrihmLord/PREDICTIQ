@@ -1,92 +1,95 @@
-// src/services/predictionService.ts
-// Mock prediction service (can be connected to real API later)
+// src/services/PredictionService.ts
 
-import { Scenario } from '../redux/slices/scenarioSlice';
+export interface PredictionResult {
+    id: string;
+    scenario: string;
+    probability: number; // 0-100
+    confidence: number; // 0-100
+    factors: { name: string; impact: 'positive' | 'negative'; weight: number }[];
+    timestamp: Date;
+    status: 'Verified' | 'Pending' | 'Draft';
+    type: 'Financial' | 'Product' | 'Strategy' | 'Metric' | 'Geopolitical';
 
-// Simulated prediction model
-// In a real app, this would call an AI/ML backend API
-export const predictionService = {
-    /**
-     * Calculate probability for a given scenario
-     * This is a mock implementation - replace with actual API call
-     */
-    async calculateProbability(
-        parameters: Record<string, number | string | boolean>
-    ): Promise<number> {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 800));
+    // Global Risk Extensions
+    defconLevel: number;
+    expertConsensus: string;
+    activeThreats: string[];
+}
 
-        // Mock calculation based on parameters
-        let baseProbability = 50;
+import { storageService } from './storageService';
 
-        // Adjust based on common parameters
-        if (parameters.confidence && typeof parameters.confidence === 'number') {
-            baseProbability += (parameters.confidence - 50) * 0.3;
+class PredictionService {
+    private async simulateDelay(ms: number) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
+    async analyzeScenario(scenarioData: any): Promise<PredictionResult> {
+        // 1. Get User Settings
+        const settings = storageService.getSettings();
+        const { riskSensitivity = 'Balanced', temperature = 0.7, analysisSpeed = 'Cinematic' } = settings;
+
+        // 2. Handle Latency (Cinematic vs Instant)
+        const delay = analysisSpeed === 'Instant' ? 50 : 2500;
+        await this.simulateDelay(delay);
+
+        // 3. Calculate Base Ranges based on Sensitivity
+        // Conservative: Lower probability of high risk
+        // Aggressive: Higher probability of high risk
+        let minRisk = 60;
+        let maxRisk = 95;
+
+        if (riskSensitivity === 'Conservative') {
+            minRisk = 40;
+            maxRisk = 75;
+        } else if (riskSensitivity === 'Aggressive') {
+            minRisk = 75;
+            maxRisk = 99;
         }
 
-        if (parameters.risk && typeof parameters.risk === 'number') {
-            baseProbability -= parameters.risk * 0.2;
-        }
+        // 4. Apply Temperature (Variance)
+        // High temp = wider variance, Low temp = strictly clustered
+        const variance = (Math.random() - 0.5) * 2 * (temperature * 20); // +/- 0 to 20 based on temp
 
-        if (parameters.preparation && typeof parameters.preparation === 'boolean') {
-            baseProbability += parameters.preparation ? 10 : -5;
-        }
+        let probability = Math.floor(Math.random() * (maxRisk - minRisk) + minRisk + variance);
+        probability = Math.max(0, Math.min(100, probability)); // Clamp 0-100
 
-        if (parameters.experience && typeof parameters.experience === 'number') {
-            baseProbability += parameters.experience * 2;
-        }
+        // Confidence also affected by temperature (Inverse: High temp = Lower confidence stability)
+        const confidenceBase = 85;
+        const confidenceVariance = (1.0 - temperature) * 10; // Low temp = high stability
+        const confidence = Math.floor(confidenceBase + (Math.random() * confidenceVariance));
 
-        // Add some randomness for demo purposes
-        baseProbability += (Math.random() - 0.5) * 10;
+        return {
+            id: Date.now().toString(),
+            scenario: scenarioData.title || 'New Analysis',
+            probability,
+            confidence: Math.max(0, Math.min(100, confidence)),
+            factors: [
+                { name: 'Market Growth', impact: 'positive', weight: 85 },
+                { name: 'Competitor Saturation', impact: 'negative', weight: 45 },
+                { name: 'Regulatory Compliance', impact: 'positive', weight: 70 },
+            ],
+            timestamp: new Date(),
+            status: 'Verified',
+            type: 'Strategy',
+            defconLevel: this.calculateDefcon(probability),
+            expertConsensus: this.generateConsensus(riskSensitivity),
+            activeThreats: ['Market Volatility', 'Supply Chain']
+        };
+    }
 
-        // Clamp between 0 and 100
-        return Math.min(100, Math.max(0, Math.round(baseProbability)));
-    },
+    private calculateDefcon(prob: number): number {
+        if (prob > 90) return 1;
+        if (prob > 75) return 2;
+        if (prob > 50) return 3;
+        if (prob > 25) return 4;
+        return 5;
+    }
 
-    /**
-     * Analyze factors contributing to the probability
-     */
-    async analyzeFactors(
-        scenario: Scenario
-    ): Promise<{ factor: string; impact: number; direction: 'positive' | 'negative' }[]> {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 500));
+    private generateConsensus(sensitivity: string): string {
+        if (sensitivity === 'Aggressive') return 'Experts urge immediate cautionary action.';
+        if (sensitivity === 'Conservative') return 'Experts suggest standard monitoring protocols.';
+        return 'Consensus reached based on simulated data.';
+    }
+}
 
-        // Mock factor analysis
-        return [
-            { factor: 'Market Conditions', impact: 15, direction: 'positive' },
-            { factor: 'Resource Availability', impact: 10, direction: 'positive' },
-            { factor: 'Competition', impact: -8, direction: 'negative' },
-            { factor: 'Timing', impact: 5, direction: 'positive' },
-            { factor: 'Risk Exposure', impact: -12, direction: 'negative' },
-        ];
-    },
-
-    /**
-     * Get historical predictions for comparison
-     */
-    async getHistoricalData(
-        category: string,
-        limit: number = 10
-    ): Promise<{ date: string; probability: number }[]> {
-        // Simulate API delay
-        await new Promise(resolve => setTimeout(resolve, 300));
-
-        // Mock historical data
-        const data = [];
-        const now = new Date();
-
-        for (let i = limit - 1; i >= 0; i--) {
-            const date = new Date(now);
-            date.setDate(date.getDate() - i * 7);
-            data.push({
-                date: date.toISOString().split('T')[0],
-                probability: Math.round(40 + Math.random() * 40),
-            });
-        }
-
-        return data;
-    },
-};
-
-export default predictionService;
+export const predictionService = new PredictionService();
