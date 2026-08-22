@@ -73,3 +73,10 @@ release/
 logs/
 .DS_Store
 Thumbs.db
+# secrets (security-max W20 / B2 — added 2026-08-21)
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*credentials*
