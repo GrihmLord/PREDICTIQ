@@ -83,3 +83,17 @@ Thumbs.db
 
 # agent working notes (local only)
 tasks/
+
+# private keys and secret bundles (defence in depth for the gitleaks CI gate)
+id_rsa
+id_dsa
+id_ecdsa
+id_ed25519
+*.ppk
+*.jks
+*.p12
+*.pfx
+*.asc
+secrets.json
+secrets.*.json
+.netrc
