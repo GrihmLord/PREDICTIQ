@@ -2,7 +2,7 @@
 // Circular gauge component for displaying success probability
 
 import React from 'react';
-import {View, Text, StyleSheet, Animated} from 'react-native';
+import {View, Text, StyleSheet} from 'react-native';
 import {colors, spacing, typography} from '../styles';
 import {getProbabilityColor} from '../styles/colors';
 
@@ -24,11 +24,9 @@ const ProbabilityGauge: React.FC<ProbabilityGaugeProps> = ({
   const clampedProbability = Math.min(100, Math.max(0, probability));
   const color = getProbabilityColor(clampedProbability);
 
-  // Calculate dimensions
-  const radius = (size - strokeWidth) / 2;
-  const circumference = 2 * Math.PI * radius;
-  const progress = (clampedProbability / 100) * circumference;
-  const offset = circumference - progress;
+  // The gauge is drawn with rotated half-circle Views rather than an SVG arc,
+  // so it needs no radius/circumference maths — that was left over from an SVG
+  // implementation this component never had.
 
   // Probability label based on value
   const getProbabilityLabel = (): string => {

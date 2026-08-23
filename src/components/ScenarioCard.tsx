@@ -20,6 +20,8 @@ interface ScenarioCardProps {
   createdAt: string;
   category?: string;
   onPress?: () => void;
+  /** Renders a delete control when supplied. */
+  onDelete?: () => void;
   style?: ViewStyle;
 }
 
@@ -31,6 +33,7 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({
   createdAt,
   category,
   onPress,
+  onDelete,
   style,
 }) => {
   const probabilityColor = getProbabilityColor(probability);
@@ -60,6 +63,16 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({
             {probability}%
           </Text>
         </View>
+        {onDelete && (
+          <TouchableOpacity
+            onPress={onDelete}
+            style={styles.deleteButton}
+            accessibilityRole="button"
+            accessibilityLabel={'Delete scenario ' + title}
+            hitSlop={{top: 8, bottom: 8, left: 8, right: 8}}>
+            <Text style={styles.deleteIcon}>✕</Text>
+          </TouchableOpacity>
+        )}
       </View>
 
       {description && (
@@ -77,6 +90,16 @@ const ScenarioCard: React.FC<ScenarioCardProps> = ({
 };
 
 const styles = StyleSheet.create({
+  deleteButton: {
+    marginLeft: spacing.sm,
+    paddingHorizontal: spacing.xs,
+    justifyContent: 'center',
+  },
+  deleteIcon: {
+    color: colors.danger.high,
+    fontSize: typography.fontSize.md,
+    fontWeight: typography.fontWeight.bold,
+  },
   card: {
     backgroundColor: colors.light.surface,
     borderRadius: borderRadius.lg,

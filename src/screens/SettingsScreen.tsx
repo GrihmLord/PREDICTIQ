@@ -28,7 +28,7 @@ interface SettingsScreenProps {
   navigation: any;
 }
 
-const SettingsScreen: React.FC<SettingsScreenProps> = ({navigation}) => {
+const SettingsScreen: React.FC<SettingsScreenProps> = () => {
   const dispatch = useAppDispatch();
   const settings = useAppSelector(state => state.settings);
   const scenariosCount = useAppSelector(

@@ -1,19 +1,19 @@
 // src/screens/ResultsScreen.tsx
 // Screen for displaying prediction results
 
-import React, {useEffect, useState} from 'react';
+import React, {useCallback, useEffect, useState} from 'react';
 import {
   View,
   Text,
   StyleSheet,
   ScrollView,
   SafeAreaView,
+  ActivityIndicator,
   Share,
 } from 'react-native';
 import {ProbabilityGauge, DashboardCard, Button} from '../components';
 import {colors, spacing, typography, borderRadius, shadows} from '../styles';
 import {useAppSelector} from '../redux/hooks';
-import {getProbabilityColor} from '../styles/colors';
 import {predictionService} from '../services/predictionService';
 
 interface ResultsScreenProps {
@@ -36,14 +36,12 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({navigation, route}) => {
     state.scenarios.scenarios.find(s => s.id === scenarioId),
   );
 
-  useEffect(() => {
-    if (scenario) {
-      loadFactors();
+  // Declared before the effect and memoised on `scenario`, so the dependency
+  // array can name it honestly instead of omitting it.
+  const loadFactors = useCallback(async () => {
+    if (!scenario) {
+      return;
     }
-  }, [scenario]);
-
-  const loadFactors = async () => {
-    if (!scenario) return;
 
     try {
       const analysisFactors = await predictionService.analyzeFactors(scenario);
@@ -53,7 +51,13 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({navigation, route}) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [scenario]);
+
+  useEffect(() => {
+    if (scenario) {
+      loadFactors();
+    }
+  }, [scenario, loadFactors]);
 
   const handleShare = async () => {
     if (!scenario) return;
@@ -82,7 +86,6 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({navigation, route}) => {
     );
   }
 
-  const probabilityColor = getProbabilityColor(scenario.probability);
   const positiveFactors = factors.filter(f => f.direction === 'positive');
   const negativeFactors = factors.filter(f => f.direction === 'negative');
   const netImpact = factors.reduce(
@@ -117,6 +120,13 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({navigation, route}) => {
         {/* Factor Analysis */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Factor Analysis</Text>
+
+          {isLoading && (
+            <ActivityIndicator
+              color={colors.primary.main}
+              style={styles.factorsLoading}
+            />
+          )}
 
           <View style={styles.factorsContainer}>
             {/* Positive Factors */}
@@ -217,6 +227,9 @@ const ResultsScreen: React.FC<ResultsScreenProps> = ({navigation, route}) => {
 };
 
 const styles = StyleSheet.create({
+  factorsLoading: {
+    marginVertical: spacing.md,
+  },
   container: {
     flex: 1,
     backgroundColor: colors.light.background,

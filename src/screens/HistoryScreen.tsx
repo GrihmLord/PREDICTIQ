@@ -12,7 +12,7 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import {ScenarioCard, Button} from '../components';
-import {colors, spacing, typography, borderRadius, shadows} from '../styles';
+import {colors, spacing, typography, borderRadius} from '../styles';
 import {useAppSelector, useAppDispatch} from '../redux/hooks';
 import {deleteScenario} from '../redux/slices/scenarioSlice';
 
@@ -62,6 +62,7 @@ const HistoryScreen: React.FC<HistoryScreenProps> = ({navigation}) => {
       createdAt={new Date(item.createdAt).toLocaleDateString()}
       category={item.category}
       onPress={() => navigation.navigate('Results', {scenarioId: item.id})}
+      onDelete={() => handleDelete(item.id)}
       style={styles.scenarioCard}
     />
   );

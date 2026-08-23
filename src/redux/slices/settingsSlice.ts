@@ -35,7 +35,7 @@ const settingsSlice = createSlice({
     setDefaultCategory(state, action: PayloadAction<string>) {
       state.defaultCategory = action.payload;
     },
-    resetSettings(state) {
+    resetSettings() {
       return initialState;
     },
   },

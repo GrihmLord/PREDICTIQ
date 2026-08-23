@@ -32,7 +32,7 @@ export const DefconStatus: React.FC<DefconStatusProps> = ({
     } else {
       pulseAnim.setValue(1); // Reset
     }
-  }, [level]);
+  }, [level, pulseAnim]);
 
   const getDefconColor = (l: number) => {
     switch (l) {

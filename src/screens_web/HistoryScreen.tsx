@@ -1,5 +1,5 @@
 // src/screens_web/HistoryScreen.tsx
-import React, {useState, useEffect} from 'react';
+import React, {useState, useEffect, useCallback} from 'react';
 import {
   View,
   Text,
@@ -73,21 +73,10 @@ export const HistoryScreen: React.FC = () => {
     {name: string; count: number}[]
   >([]);
 
-  useEffect(() => {
-    loadHistory();
-  }, []);
-
-  useEffect(() => {
-    filterData();
-  }, [searchQuery, selectedSeverity, history]);
-
-  const loadHistory = () => {
-    const data = storageService.getHistory();
-    setHistory(data);
-    calculateKPIs(data);
-  };
-
-  const calculateKPIs = (data: PredictionResult[]) => {
+  // Declared before the effects that use them. A useCallback dependency array
+  // is evaluated during render, so a callback referenced before its own const
+  // is initialised would hit the temporal dead zone.
+  const calculateKPIs = useCallback((data: PredictionResult[]) => {
     setTotalScans(data.length);
 
     if (data.length === 0) {
@@ -133,9 +122,15 @@ export const HistoryScreen: React.FC = () => {
         ? activeDomains
         : [{name: 'General', count: data.length}],
     );
-  };
+  }, []);
 
-  const filterData = () => {
+  const loadHistory = useCallback(() => {
+    const data = storageService.getHistory();
+    setHistory(data);
+    calculateKPIs(data);
+  }, [calculateKPIs]);
+
+  const filterData = useCallback(() => {
     let filtered = history;
 
     if (searchQuery) {
@@ -155,7 +150,15 @@ export const HistoryScreen: React.FC = () => {
     }
 
     setFilteredHistory(filtered);
-  };
+  }, [history, searchQuery, selectedSeverity]);
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    filterData();
+  }, [filterData]);
 
   const getDefconColor = (level: number) => {
     switch (level) {
