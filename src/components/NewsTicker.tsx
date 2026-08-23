@@ -1,54 +1,57 @@
-import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-} from 'react-native';
-import { feedService, NewsItem } from '../services/FeedService';
-import { colors } from '../styles/colors';
+import React, {useEffect, useState} from 'react';
+import {View, Text, StyleSheet} from 'react-native';
+import {feedService, NewsItem} from '../services/FeedService';
+import {colors} from '../styles/colors';
+
+const MAX_ITEMS = 10;
+const ROTATE_INTERVAL_MS = 6000;
 
 export const NewsTicker: React.FC = () => {
   const [news, setNews] = useState<NewsItem[]>([]);
   const [currentHeadline, setCurrentHeadline] = useState<NewsItem | null>(null);
 
+  // Subscribe exactly once. The previous version depended on currentHeadline,
+  // so it tore down and re-attached the feed listener on every headline change.
   useEffect(() => {
     const handleNews = (item: NewsItem) => {
       setNews(prev => {
-        const unique = [item, ...prev].filter(
-          (v, i, a) => a.findIndex(t => t.id === v.id) === i,
+        const deduped = [item, ...prev].filter(
+          (entry, index, all) =>
+            all.findIndex(other => other.id === entry.id) === index,
         );
-        return unique.slice(0, 10); // Keep last 10
+        return deduped.slice(0, MAX_ITEMS);
       });
-      // If it's the first item or a Critical item, show immediately
-      if (!currentHeadline || item.severity === 'CRITICAL') {
-        setCurrentHeadline(item);
-      }
+
+      // A critical item interrupts the rotation; anything else waits its turn.
+      setCurrentHeadline(current =>
+        !current || item.severity === 'CRITICAL' ? item : current,
+      );
     };
 
-    feedService.on('news', handleNews);
-    return () => {
-      feedService.off('news', handleNews);
-    };
-  }, [currentHeadline]);
+    return feedService.on('news', handleNews);
+  }, []);
 
-  // Timer to cycle headlines
+  // Rotation reads the latest list through the state updater, so the interval
+  // does not need to be rebuilt whenever a headline arrives.
   useEffect(() => {
-    if (!currentHeadline && news.length > 0) {
-      setCurrentHeadline(news[0]);
+    if (news.length === 0) {
+      return;
     }
 
     const interval = setInterval(() => {
-      if (news.length > 0) {
-        const idx = currentHeadline
-          ? news.findIndex(n => n.id === currentHeadline.id)
+      setCurrentHeadline(current => {
+        if (news.length === 0) {
+          return current;
+        }
+        const index = current
+          ? news.findIndex(item => item.id === current.id)
           : -1;
-        const nextIdx = (idx + 1) % news.length;
-        setCurrentHeadline(news[nextIdx]);
-      }
-    }, 6000); // 6s per headline
+        return news[(index + 1) % news.length];
+      });
+    }, ROTATE_INTERVAL_MS);
 
     return () => clearInterval(interval);
-  }, [news, currentHeadline]);
+  }, [news]);
 
   if (!currentHeadline) {
     return null;
@@ -87,7 +90,7 @@ export const NewsTicker: React.FC = () => {
         <Text
           style={[
             styles.labelText,
-            !currentHeadline.isLive && { color: colors.warning.high },
+            !currentHeadline.isLive && {color: colors.warning.high},
           ]}>
           {currentHeadline.isLive ? 'LIVE WIRE' : 'SIMULATION'}
         </Text>
@@ -105,7 +108,7 @@ export const NewsTicker: React.FC = () => {
         <Text
           style={[
             styles.headline,
-            { color: getSeverityColor(currentHeadline.severity) },
+            {color: getSeverityColor(currentHeadline.severity)},
           ]}>
           {currentHeadline.headline}
         </Text>

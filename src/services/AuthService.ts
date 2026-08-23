@@ -1,51 +1,87 @@
-export interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-  organization: string;
-  role: 'ADMIN' | 'ANALYST' | 'VIEWER';
-  avatarUrl?: string;
-}
+// src/services/AuthService.ts
+// Enterprise identity.
+//
+// The whole flow runs in the main process (electron/lib/oidc.js): OAuth 2.0
+// authorization code with PKCE, opened in the user's real browser and returned
+// over a loopback redirect. Tokens are held in the OS keystore. This module
+// only relays status and claims.
+//
+// When no identity provider is configured the app says so. It does not
+// manufacture a session.
+
+import {getBridge, AuthProfile, AuthStatus} from './bridge';
+
+export type UserProfile = AuthProfile;
+export type {AuthStatus};
+
+const UNAVAILABLE: AuthStatus = {
+  configured: false,
+  issuer: null,
+  authenticated: false,
+  profile: null,
+  reason: 'Enterprise sign-in is only available in the desktop app.',
+};
 
 class AuthService {
-  private currentUser: UserProfile | null = null;
+  private cached: AuthStatus = UNAVAILABLE;
 
-  /**
-   * Simulates an SSO login flow.
-   * In a real app, this would open a browser window to the IDP (Okta, Azure AD).
-   */
-  async loginWithSSO(): Promise<UserProfile> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        const mockUser: UserProfile = {
-          id: 'usr_88293',
-          name: 'Commander Shepard',
-          email: 'shepard@alliance.gov',
-          organization: 'Systems Alliance',
-          role: 'ADMIN',
-          avatarUrl: 'https://via.placeholder.com/150',
-        };
-        this.currentUser = mockUser;
-        resolve(mockUser);
-      }, 1500); // Simulate network latency
-    });
+  /** Reads the current session from the main process. */
+  async refresh(): Promise<AuthStatus> {
+    const bridge = getBridge();
+    if (!bridge) {
+      this.cached = UNAVAILABLE;
+      return this.cached;
+    }
+    try {
+      this.cached = await bridge.auth.status();
+    } catch (error) {
+      this.cached = {
+        configured: false,
+        issuer: null,
+        authenticated: false,
+        profile: null,
+        reason:
+          error instanceof Error
+            ? error.message
+            : 'Could not read the sign-in state.',
+      };
+    }
+    return this.cached;
   }
 
-  async logout(): Promise<void> {
-    return new Promise(resolve => {
-      setTimeout(() => {
-        this.currentUser = null;
-        resolve();
-      }, 500);
-    });
+  /**
+   * Starts the browser sign-in. Rejects with a message worth showing when the
+   * provider is not configured or the user abandons the flow.
+   */
+  async login(): Promise<AuthStatus> {
+    const bridge = getBridge();
+    if (!bridge) {
+      throw new Error(UNAVAILABLE.reason as string);
+    }
+    this.cached = await bridge.auth.login();
+    return this.cached;
+  }
+
+  async logout(): Promise<AuthStatus> {
+    const bridge = getBridge();
+    if (!bridge) {
+      this.cached = UNAVAILABLE;
+      return this.cached;
+    }
+    this.cached = await bridge.auth.logout();
+    return this.cached;
+  }
+
+  getStatus(): AuthStatus {
+    return this.cached;
   }
 
   getCurrentUser(): UserProfile | null {
-    return this.currentUser;
+    return this.cached.profile;
   }
 
   isAuthenticated(): boolean {
-    return !!this.currentUser;
+    return this.cached.authenticated;
   }
 }
 

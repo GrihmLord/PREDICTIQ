@@ -80,3 +80,6 @@ Thumbs.db
 *.pem
 *.key
 *credentials*
+
+# agent working notes (local only)
+tasks/

@@ -1,8 +1,14 @@
 // src/App.tsx
-// Main application entry point - Modular Architecture
+// Application shell: bootstraps persistence, then renders the tab surface.
 
-import React, {useState} from 'react';
-import {View, Text, StyleSheet, TouchableOpacity} from 'react-native';
+import React, {useState, useEffect} from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  ActivityIndicator,
+} from 'react-native';
 import {Provider} from 'react-redux';
 import {
   SafeAreaProvider,
@@ -15,9 +21,18 @@ import {HistoryScreen} from './screens_web/HistoryScreen';
 import {SettingsScreen} from './screens_web/SettingsScreen';
 
 import {ThemeProvider} from './context/ThemeContext';
+import {ErrorBoundary} from './components/ErrorBoundary';
+import {storageService} from './services/storageService';
+import {authService} from './services/AuthService';
 import {colors} from './styles/colors';
 
 type TabName = 'Dashboard' | 'History' | 'Settings';
+
+const TABS: {name: TabName; icon: string}[] = [
+  {name: 'Dashboard', icon: '📊'},
+  {name: 'History', icon: '📋'},
+  {name: 'Settings', icon: '⚙️'},
+];
 
 const MainApp: React.FC = () => {
   const [activeTab, setActiveTab] = useState<TabName>('Dashboard');
@@ -25,49 +40,48 @@ const MainApp: React.FC = () => {
 
   const renderContent = () => {
     switch (activeTab) {
-      case 'Dashboard':
-        return <DashboardScreen onNavigate={t => setActiveTab(t as TabName)} />;
       case 'History':
         return <HistoryScreen />;
       case 'Settings':
         return <SettingsScreen />;
+      default:
+        return (
+          <DashboardScreen onNavigate={tab => setActiveTab(tab as TabName)} />
+        );
     }
   };
 
-  const tabs: {name: TabName; icon: string}[] = [
-    {name: 'Dashboard', icon: '📊'},
-    {name: 'History', icon: '📋'},
-    {name: 'Settings', icon: '⚙️'},
-  ];
-
   return (
     <View style={[styles.container, {paddingTop: insets.top}]}>
-      {/* Header */}
       <View style={styles.header}>
         <View>
           <Text style={styles.headerTitle}>PREDICTIQ</Text>
           <Text style={styles.headerSubtitle}>{activeTab}</Text>
         </View>
-        <View style={styles.userAvatar}>
-          <Text style={styles.userInitials}>DQ</Text>
-        </View>
+        <OperatorBadge />
       </View>
 
-      {/* Content */}
-      <View style={{flex: 1}}>{renderContent()}</View>
+      {/* Keyed so switching tabs clears a boundary that has tripped, rather
+          than leaving the operator stuck on the error state. */}
+      <View style={styles.body}>
+        <ErrorBoundary key={activeTab} label={activeTab}>
+          {renderContent()}
+        </ErrorBoundary>
+      </View>
 
-      {/* Bottom Navigation */}
       <View
         style={[
           styles.bottomNav,
           {paddingBottom: Math.max(insets.bottom, 10)},
         ]}>
-        {tabs.map(tab => (
+        {TABS.map(tab => (
           <TouchableOpacity
             key={tab.name}
             style={styles.navItem}
             onPress={() => setActiveTab(tab.name)}
-            activeOpacity={0.7}>
+            activeOpacity={0.7}
+            accessibilityRole="tab"
+            accessibilityState={{selected: activeTab === tab.name}}>
             <Text
               style={[
                 styles.navIcon,
@@ -89,12 +103,84 @@ const MainApp: React.FC = () => {
   );
 };
 
+/** Shows the signed-in operator's initials, or a neutral marker when unauthenticated. */
+const OperatorBadge: React.FC = () => {
+  const profile = authService.getCurrentUser();
+  const initials = profile
+    ? profile.name
+        .split(/\s+/)
+        .slice(0, 2)
+        .map(part => part.charAt(0).toUpperCase())
+        .join('')
+    : '—';
+
+  return (
+    <View
+      style={styles.userAvatar}
+      accessibilityLabel={profile ? profile.name : 'Not signed in'}>
+      <Text style={styles.userInitials}>{initials}</Text>
+    </View>
+  );
+};
+
+const Splash: React.FC<{message: string; error?: boolean}> = ({
+  message,
+  error,
+}) => (
+  <View style={styles.splash}>
+    {!error && <ActivityIndicator color={colors.primary.main} size="large" />}
+    <Text style={[styles.splashText, error && styles.splashError]}>
+      {message}
+    </Text>
+  </View>
+);
+
 const App: React.FC = () => {
+  const [ready, setReady] = useState(false);
+  const [bootError, setBootError] = useState<string | null>(null);
+
+  // Persistence is loaded once, before any screen renders, so no screen
+  // observes an empty store that is about to fill in.
+  useEffect(() => {
+    let cancelled = false;
+
+    const bootstrap = async () => {
+      try {
+        await storageService.hydrate();
+        await authService.refresh();
+      } catch (error) {
+        if (!cancelled) {
+          setBootError(
+            error instanceof Error
+              ? error.message
+              : 'Stored data could not be loaded.',
+          );
+        }
+      } finally {
+        if (!cancelled) {
+          setReady(true);
+        }
+      }
+    };
+
+    void bootstrap();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  if (!ready) {
+    return <Splash message="Initializing secure environment…" />;
+  }
+
   return (
     <Provider store={store}>
       <SafeAreaProvider>
         <ThemeProvider>
-          <MainApp />
+          <ErrorBoundary label="PREDICTIQ">
+            {bootError && <Splash message={bootError} error />}
+            <MainApp />
+          </ErrorBoundary>
         </ThemeProvider>
       </SafeAreaProvider>
     </Provider>
@@ -103,6 +189,21 @@ const App: React.FC = () => {
 
 const styles = StyleSheet.create({
   container: {flex: 1, backgroundColor: colors.dark.background},
+  body: {flex: 1},
+  splash: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: colors.dark.background,
+    padding: 24,
+  },
+  splashText: {
+    color: colors.dark.textSecondary,
+    marginTop: 16,
+    fontSize: 14,
+    textAlign: 'center',
+  },
+  splashError: {color: colors.warning.high},
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

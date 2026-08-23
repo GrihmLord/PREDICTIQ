@@ -1,114 +1,105 @@
-# PREDICTIQ Component Library
+# PREDICTIQ Components
 
-## Core Components
+Reference for the reusable pieces of the renderer. Everything here is a
+functional component with hooks; styling comes from `src/styles`.
 
-### DashboardCard
+## Shell
 
-KPI display card with title, value, and optional trend indicator.
+### `ErrorBoundary`
 
-```tsx
-<DashboardCard
-  title="Success Rate"
-  value="72%"
-  trend="up"
-  trendValue="5%"
-/>
-```
-
-| Prop | Type | Description |
-|------|------|-------------|
-| title | string | Card header |
-| value | string/number | Main display value |
-| trend? | 'up'/'down'/'flat' | Trend direction |
-| trendValue? | string | Trend percentage |
-
----
-
-### ProbabilityGauge
-
-Circular gauge for probability display with semantic coloring.
+Catches render-time failures so one bad panel cannot leave a blank window.
+Renders the message, a **Try again** control that resets its own state, and the
+component stack for diagnosis.
 
 ```tsx
-<ProbabilityGauge
-  probability={75}
-  size={200}
-  label="Success Probability"
-/>
+<ErrorBoundary label="Dashboard">
+  <DashboardScreen onNavigate={setTab} />
+</ErrorBoundary>
 ```
 
-| Prop | Type | Default | Description |
-|------|------|---------|-------------|
-| probability | number | - | 0-100 percentage |
-| size? | number | 160 | Gauge diameter |
-| label? | string | "Success Probability" | Bottom label |
+`App.tsx` keys the boundary on the active tab, so switching tabs clears a
+tripped boundary rather than stranding the operator on the error state.
 
-**Color Mapping:**
-- 70-100%: Green (High)
-- 40-69%: Amber (Moderate)  
-- 0-39%: Red (Low)
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `children` | `ReactNode` | The subtree to protect |
+| `label` | `string?` | Named in the heading, e.g. "Dashboard stopped responding" |
 
----
+## Risk display
 
-### ScenarioCard
+### `DefconStatus`
 
-Clickable card for scenario summaries in lists.
+The five-level DEFCON banner with the consensus line. Pulses at levels 1–2.
 
-```tsx
-<ScenarioCard
-  id="scenario_123"
-  title="Product Launch"
-  probability={85}
-  category="Business"
-  createdAt="2024-01-15"
-  onPress={() => navigate('Results')}
-/>
-```
+| Prop | Type | Notes |
+| --- | --- | --- |
+| `level` | `1 \| 2 \| 3 \| 4 \| 5` | 1 is most severe |
+| `description` | `string?` | Consensus text; falls back to an awaiting-assessment message |
 
----
+### `ExpertSelector`
 
-### Button
+Grid of selectable council members. The dashboard enforces a 3–5 quorum.
 
-Multi-variant button component.
+| Prop | Type |
+| --- | --- |
+| `experts` | `ExpertDefinition[]` |
+| `selectedIds` | `string[]` |
+| `onToggle` | `(id: string) => void` |
 
-```tsx
-<Button
-  title="Calculate"
-  onPress={handleSubmit}
-  variant="primary"
-  size="large"
-  loading={isSubmitting}
-/>
-```
+### `ExpertActivationChart`
 
-| Variant | Use Case |
-|---------|----------|
-| primary | Main CTAs |
-| secondary | Alternative actions |
-| outline | Secondary emphasis |
-| ghost | Tertiary/links |
+Per-expert severity after an assessment. Renders a waiting state when empty.
 
-## Design Tokens
+| Prop | Type |
+| --- | --- |
+| `data` | `{name: string; severity: number; domain: string}[]` |
 
-### Colors
+### `ProbabilityGauge`
 
-Import: `import { colors } from '../styles'`
+Circular gauge for the guided builder's **success** probability, where higher is
+better. Do not use it for `PredictionResult.probability`, which is a *threat*
+probability with the opposite polarity.
 
-- `colors.primary.main` - Brand color
-- `colors.success.high` - Positive indicators
-- `colors.warning.high` - Caution indicators
-- `colors.danger.high` - Negative indicators
+## Intelligence
 
-### Spacing
+### `NewsTicker`
 
-9-level scale: xs(4), sm(8), md(12), lg(16), xl(20), 2xl(24), 3xl(32), 4xl(40), 5xl(48)
+Single-line rolling headline from `feedService`, rotating every 6 seconds. A
+`CRITICAL` item interrupts the rotation immediately. The badge reads **LIVE
+WIRE** or **SIMULATION** — the fallback is always labelled as such rather than
+being passed off as live data.
 
-### Typography
+Takes no props; it subscribes to the feed itself and unsubscribes on unmount.
 
-```ts
-typography.fontSize.xs   // 12px
-typography.fontSize.sm   // 14px
-typography.fontSize.md   // 16px (base)
-typography.fontSize.lg   // 18px
-typography.fontSize.xl   // 20px
-typography.fontSize['2xl'] // 24px
-```
+### `GlobeCard`
+
+WebGL globe over GDELT geographic data, with conflict intensity as hex-bin
+altitude. The earth texture is bundled at `public/assets/globe/`; the component
+makes no CDN request. Width is measured from its own container via `onLayout`,
+and auto-rotation honours the **Reduced Motion** setting.
+
+## Charts
+
+| Component | Input | Purpose |
+| --- | --- | --- |
+| `SeverityTrendChart` | `{date, severity}[]` | DEFCON over time |
+| `DomainDistributionChart` | `{name, count}[]` | Findings per risk domain |
+| `TrendChart` | — | Market trend visual |
+
+## Primitives
+
+| Component | Notes |
+| --- | --- |
+| `DashboardCard` | Titled surface for a metric or panel |
+| `ScenarioCard` | Summary row for a stored scenario |
+| `Button` | Themed pressable with variants |
+
+## Conventions
+
+- **Colours** come from `src/styles/colors`; on web these resolve through CSS
+  custom properties so enterprise branding applies live. Brand values are
+  validated as hex before they reach the stylesheet.
+- **Interactive elements** carry `accessibilityRole` and, where selection state
+  matters, `accessibilityState`.
+- **No `alert()` or `confirm()`** — user feedback uses in-app notices and modal
+  confirmations, which work identically in Electron and the browser.

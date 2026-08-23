@@ -1,0 +1,9 @@
+node_modules/
+dist/
+release/
+logs/
+coverage/
+android/
+ios/
+vendor/
+public/assets/

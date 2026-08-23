@@ -9,10 +9,9 @@ import {
   ScrollView,
   TextInput,
   Platform,
-  Alert,
 } from 'react-native';
 import {storageService} from '../services/storageService';
-import {reportService} from '../services/ReportService';
+import {reportService, summariseDomains} from '../services/ReportService';
 import {PredictionResult} from '../services/predictionService';
 import {SeverityTrendChart} from '../components/SeverityTrendChart';
 import {DomainDistributionChart} from '../components/DomainDistributionChart';
@@ -28,24 +27,39 @@ export const HistoryScreen: React.FC = () => {
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedSeverity, setSelectedSeverity] = useState<number | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [exporting, setExporting] = useState<'pdf' | 'pptx' | null>(null);
 
-  // Export Actions
-  const handleExportPDF = () => {
-    if (history.length === 0) {
-      return Alert.alert('Export Failed', 'No data to export.');
+  /**
+   * Exports whatever the user is currently looking at. Both report builders
+   * return an outcome rather than throwing, so a cancelled save dialog is not
+   * reported as a failure.
+   */
+  const runExport = async (format: 'pdf' | 'pptx') => {
+    const data = filteredHistory.length > 0 ? filteredHistory : history;
+    if (data.length === 0) {
+      setNotice('There is nothing to export.');
+      return;
     }
-    reportService.generatePDF(
-      filteredHistory.length > 0 ? filteredHistory : history,
-    );
-  };
 
-  const handleExportPPTX = () => {
-    if (history.length === 0) {
-      return Alert.alert('Export Failed', 'No data to export.');
+    setExporting(format);
+    setNotice(null);
+    try {
+      const outcome =
+        format === 'pdf'
+          ? await reportService.generatePDF(data)
+          : await reportService.generatePPTX(data);
+
+      if (outcome.error) {
+        setNotice(outcome.error);
+      } else if (outcome.saved) {
+        setNotice('Saved to ' + outcome.path);
+      }
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'The export failed.');
+    } finally {
+      setExporting(null);
     }
-    reportService.generatePPTX(
-      filteredHistory.length > 0 ? filteredHistory : history,
-    );
   };
 
   // KPI State
@@ -105,43 +119,14 @@ export const HistoryScreen: React.FC = () => {
       }));
     setSeverityTrend(trendData);
 
-    // Domain Distribution
-    const domains: Record<string, number> = {
-      Cyber: 0,
-      Bio: 0,
-      Geo: 0,
-      Orbital: 0,
-      AI: 0,
-    };
-
-    data.forEach(item => {
-      const combinedText = (item.activeThreats || []).join(' ').toLowerCase();
-      if (combinedText.includes('cyber') || combinedText.includes('malware')) {
-        domains.Cyber++;
-      }
-      if (combinedText.includes('bio') || combinedText.includes('virus')) {
-        domains.Bio++;
-      }
-      if (combinedText.includes('border') || combinedText.includes('treaty')) {
-        domains.Geo++;
-      }
-      if (
-        combinedText.includes('satellite') ||
-        combinedText.includes('orbit')
-      ) {
-        domains.Orbital++;
-      }
-      if (combinedText.includes('ai') || combinedText.includes('model')) {
-        domains.AI++;
-      }
-    });
-
-    const activeDomains = Object.keys(domains)
-      .map(key => ({
-        name: key,
-        count: domains[key],
-      }))
-      .filter(d => d.count > 0);
+    // Domain distribution comes from the factors the engine recorded, rather
+    // than a substring search over the consensus prose — the prose was written
+    // by the same engine, so searching it only re-found the wording.
+    const domains = summariseDomains(data);
+    const activeDomains = domains.labels.map((name, index) => ({
+      name,
+      count: domains.values[index],
+    }));
 
     setDomainDistribution(
       activeDomains.length > 0
@@ -157,6 +142,7 @@ export const HistoryScreen: React.FC = () => {
       const lowerQuery = searchQuery.toLowerCase();
       filtered = filtered.filter(
         item =>
+          (item.scenario || '').toLowerCase().includes(lowerQuery) ||
           (item.expertConsensus || '').toLowerCase().includes(lowerQuery) ||
           (item.activeThreats || []).some(t =>
             t.toLowerCase().includes(lowerQuery),
@@ -217,6 +203,9 @@ export const HistoryScreen: React.FC = () => {
             <Text style={styles.badgeText}>DEFCON {item.defconLevel}</Text>
           </View>
         </View>
+        <Text style={styles.logScenario} numberOfLines={2}>
+          {item.scenario}
+        </Text>
         <Text style={styles.logConsensus} numberOfLines={2}>
           {item.expertConsensus}
         </Text>
@@ -287,17 +276,33 @@ export const HistoryScreen: React.FC = () => {
           <Text style={styles.sectionTitle}>Audit Log</Text>
           <View style={styles.exportActions}>
             <TouchableOpacity
-              style={styles.exportBtn}
-              onPress={handleExportPDF}>
-              <Text style={styles.exportBtnText}>📄 PDF</Text>
+              style={[
+                styles.exportBtn,
+                exporting === 'pdf' && styles.exportBtnBusy,
+              ]}
+              disabled={exporting !== null}
+              accessibilityRole="button"
+              onPress={() => runExport('pdf')}>
+              <Text style={styles.exportBtnText}>
+                {exporting === 'pdf' ? '⏳ PDF' : '📄 PDF'}
+              </Text>
             </TouchableOpacity>
             <TouchableOpacity
-              style={styles.exportBtn}
-              onPress={handleExportPPTX}>
-              <Text style={styles.exportBtnText}>📊 PPTX</Text>
+              style={[
+                styles.exportBtn,
+                exporting === 'pptx' && styles.exportBtnBusy,
+              ]}
+              disabled={exporting !== null}
+              accessibilityRole="button"
+              onPress={() => runExport('pptx')}>
+              <Text style={styles.exportBtnText}>
+                {exporting === 'pptx' ? '⏳ PPTX' : '📊 PPTX'}
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
+
+        {notice && <Text style={styles.notice}>{notice}</Text>}
 
         <View style={styles.filterRow}>
           <TextInput
@@ -486,9 +491,15 @@ const styles = StyleSheet.create({
     fontSize: 10,
     fontWeight: 'bold',
   },
-  logConsensus: {
+  logScenario: {
     color: colors.dark.textPrimary,
     fontSize: 14,
+    fontWeight: '600',
+    marginBottom: 4,
+  },
+  logConsensus: {
+    color: colors.dark.textSecondary,
+    fontSize: 13,
     marginBottom: 4,
   },
   logThreats: {
@@ -524,5 +535,13 @@ const styles = StyleSheet.create({
     color: colors.dark.textSecondary,
     fontSize: 12,
     fontWeight: '600',
+  },
+  exportBtnBusy: {
+    opacity: 0.6,
+  },
+  notice: {
+    color: colors.warning.high,
+    fontSize: 12,
+    marginBottom: 12,
   },
 });

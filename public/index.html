@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta http-equiv="Content-Security-Policy"
-    content="default-src 'self'; script-src 'self' 'unsafe-eval' 'unsafe-inline'; connect-src 'self' https://api.gdeltproject.org ws://localhost:8080; img-src 'self' data: https:; style-src 'self' 'unsafe-inline'; font-src 'self' data:;">
+  <!-- Injected by webpack: strict in production, eval/websocket-friendly in development. -->
+  <meta http-equiv="Content-Security-Policy" content="<%= csp %>">
+  <meta name="referrer" content="no-referrer">
   <title>PREDICTIQ</title>
   <style>
     html,
