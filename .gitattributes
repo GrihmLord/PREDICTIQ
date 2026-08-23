@@ -1,0 +1,35 @@
+# Normalise line endings.
+#
+# The repository stores LF and every checkout gets LF, regardless of the
+# contributor's core.autocrlf setting. Without this, a Windows clone with
+# autocrlf=true produces CRLF on disk, which makes prettier/prettier report an
+# error on every single line — and a contributor with autocrlf=false would
+# commit those CRLFs and break the Linux CI run.
+* text=auto eol=lf
+
+# Files that must never be touched by line-ending conversion.
+*.jpg   binary
+*.jpeg  binary
+*.png   binary
+*.gif   binary
+*.webp  binary
+*.ico   binary
+*.pdf   binary
+*.zip   binary
+*.jar   binary
+*.keystore binary
+*.jks   binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
+*.otf   binary
+*.eot   binary
+*.mp4   binary
+*.asar  binary
+
+# Generated; keep it out of diffs and merge conflict resolution.
+package-lock.json -diff linguist-generated
+
+# Windows-only scripts genuinely need CRLF.
+*.bat text eol=crlf
+*.cmd text eol=crlf
