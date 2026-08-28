@@ -97,3 +97,8 @@ id_ed25519
 secrets.json
 secrets.*.json
 .netrc
+
+# JVM crash dumps (VS Code Java language server) — carry local paths,
+# usernames, and full environment listings
+hs_err_pid*.log
+replay_pid*.log
