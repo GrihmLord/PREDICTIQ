@@ -29,7 +29,13 @@ module.exports = {
       },
     },
     {
-      files: ['*.config.js', '.eslintrc.js', '.prettierrc.js', 'index.js', 'index.web.js'],
+      files: [
+        '*.config.js',
+        '.eslintrc.js',
+        '.prettierrc.js',
+        'index.js',
+        'index.web.js',
+      ],
       env: {
         node: true,
       },
